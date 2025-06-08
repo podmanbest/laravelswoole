@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: laravel
+  namespace: laravel
+  labels:
+    app: laravel
+  ports:
+    - containerPort: 3306
+      hostPort: 3306
+    - containerPort: 6379
+      hostPort: 6379
+    - containerPort: 8080
+      hostPort: 8080
+spec:
+  volumes:
+    - name: mysql-data
+      hostPath:
+        path: ./volumes/mysql/data
+        type: DirectoryOrCreate
+    - name: mysql-logs
+      hostPath:
+        path: ./volumes/logs/mysql
+        type: DirectoryOrCreate
+    - name: mysql-config
+      hostPath:
+        path: ./docker/mysql/my.cnf
+        type: File
+    - name: mysql-init
+      hostPath:
+        path: ./docker/mysql/sql
+        type: DirectoryOrCreate
+    - name: redis-data
+      hostPath:
+        path: ./docker/redis/data
+        type: DirectoryOrCreate
+    - name: pma-sessions
+      hostPath:
+        path: ./volumes/pma/sessions
+        type: DirectoryOrCreate
+  containers:
+    - name: database
+      image: mariadb:10.6.22-jammy
+      ports:
+        - containerPort: 3306
+        - hostPort: 3306
+      volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-data
+        - mountPath: /var/log/mysql
+          name: mysql-logs
+        - mountPath: /etc/mysql/conf.d/my.cnf
+          name: mysql-config
+        - mountPath: /docker-entrypoint-initdb.d
+          name: mysql-init
+      env:
+        - name: MYSQL_DATABASE
+          value: '${DB_DATABASE}'
+        - name: MYSQL_USER
+          value: '${DB_USERNAME}'
+        - name: MYSQL_PASSWORD
+          value: '${DB_PASSWORD}'
+        - name: MYSQL_ROOT_PASSWORD
+          value: '${DB_ROOT_PASSWORD}'
+      readinessProbe:
+        exec:
+          command:
+            - sh
+            - -c
+            - 'mysqladmin ping -u${DB_USERNAME} -p${DB_PASSWORD}'
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        failureThreshold: 3
+    - name: redis
+      image: redis:alpine3.16
+      ports:
+        - containerPort: 6379
+        - hostPort: 6379
+      volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      readinessProbe:
+        exec:
+          command:
+            - redis-cli
+            - ping
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        failureThreshold: 3
+    - name: phpmyadmin
+      image: phpmyadmin:fpm-alpine
+      ports:
+        - containerPort: 80
+        - hostPort: 8080
+      volumeMounts:
+        - name: pma-sessions
+          mountPath: /sessions
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: '${DB_ROOT_PASSWORD}'
+        - name: PMA_HOST
+          value: database
+        - name: PMA_PORT
+          value: '3306'
+        - name: UPLOAD_LIMIT
+          value: '5G'

@@ -42,6 +42,8 @@ _ide_*
 
 ### Node ###
 # Logs
+data
+sessions
 logs
 *.log
 npm-debug.log*
