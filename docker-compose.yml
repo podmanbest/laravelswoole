@@ -1,115 +1,70 @@
-name: laravel-swoole
-#Docker Networks
+name: larale
+#
 networks:
   swnet:
     driver: bridge
 
-#Volumes
-volumes:
-  dbdata:
-    options:
-      type: none
-      device: ./data
-      o: bind
-    driver: local
-
-# Workflow
+#
 services:
-  mariadb:
-    image: mariadb
-    container_name: mariadb
-    restart: unless-stopped
-    tty: true
+  database:
+    image: mariadb:10.6.22-jammy
+    container_name: database
     ports:
-      - '3306:3306'
+      - 3306:3306
+    volumes:
+      - ./volumes/mysql/data:/var/lib/mysql:Z
+      - ./volumes/mysql/logs:/var/log/mysql:Z
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql/sql:/docker-entrypoint-initdb.d
     environment:
       MYSQL_DATABASE: ${DB_DATABASE}
       MYSQL_USER: ${DB_USERNAME}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      SERVICE_TAGS: dev
-      SERVICE_NAME: mariadb
-    volumes:
-      - ./.docker/mariadb/my.cnf:/etc/mysql/my.cnf
-      - dbdata:/var/lib/mysql/
     networks:
       - swnet
-    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
-
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -p${DB_PASSWORD}
+      retries: 3
+      timeout: 5s
+  #
   redis:
-    image: 'redis:alpine'
+    image: redis:redis
     container_name: redis
-    restart: unless-stopped
+    volumes:
+      - ./volumes/redis/data:data:Z
     ports:
-      - '6379:6379'
+      - 6379:6379
     networks:
       - swnet
-
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      retries: 3
+      timeout: 5s
+  #
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin/phpmyadmin:fpm-alpine
     container_name: phpmyadmin
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      PMA_HOST: mariadb
+      PMA_HOST: database
       PMA_PORT: 3306
+      UPLOAD_LIMIT: 5G
       PMA_ARBITRARY: 1
-    restart: always
     depends_on:
-      - mariadb
+      - database
     ports:
       - '8083:80'
     volumes:
-      - /sessions
+      - ./volumes/pma/sessions:/sessions:Z
     networks:
       - swnet
     links:
-      - mariadb
-
-  swoole:
-    build:
-      context: .
-      dockerfile: ./.docker/php/Dockerfile
-    container_name: swoole
-    ports:
-      - '1215:1215'
-    volumes:
-      - ./src:/var/www/html:delegated
-    # user: site
-    # command: php artisan swoole:http start
-    networks:
-      - swnet
-
-  composer:
-    build:
-      context: .
-      dockerfile: ./.docker/php/composer/Dockerfile
-    container_name: composer
-    volumes:
-      - ./src:/var/www/html
-    working_dir: /var/www/html
-    user: site
-    networks:
-      - swnet
-    entrypoint: ['composer', '--ignore-platform-reqs']
-
-  npm:
-    image: node:15.0.1
-    container_name: npm
-    volumes:
-      - ./src:/var/www/html
-    working_dir: /var/www/html
-    entrypoint: ['npm']
-
-  artisan:
-    build:
-      context: .
-      dockerfile: ./.docker/php/Dockerfile
-    container_name: artisan
-    volumes:
-      - ./src:/var/www/html:delegated
-    depends_on:
-      - mariadb
-    working_dir: /var/www/html
-    entrypoint: ['php', '/var/www/html/artisan']
-    networks:
-      - swnet
+      - database
