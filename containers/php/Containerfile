@@ -1,7 +1,7 @@
 FROM php:8.2-fpm
 
 COPY php.ini /usr/local/etc/php/
-COPY docker.conf /usr/local/etc/php-fpm.d/docker.conf
+COPY custom.conf /usr/local/etc/php-fpm.d/custom.conf
 COPY .bashrc /root/
 
 RUN apt-get update \

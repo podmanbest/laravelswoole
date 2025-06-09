@@ -1,12 +1,11 @@
 # build images
-podman build -t laravel-app ./laravel-app
+podman build -t app-lara ./containers/php
 
 # check if podman is installed
-podman pod stop laravel-pod 2>/dev/null || true
-
-if podman pod exists laravel-pod; then
-  podman pod rm -f laravel-pod
+podman pod stop laravel 2>/dev/null || true
+if podman pod exists laravel; then
+  podman pod rm -f laravel
 fi
-podman pod create --name laravel-pod
 
+# create from kube yaml
 podman play kube ./pods.yaml

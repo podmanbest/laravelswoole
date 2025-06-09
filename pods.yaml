@@ -38,6 +38,10 @@ spec:
       hostPath:
         path: ./volumes/pma/sessions
         type: DirectoryOrCreate
+    - name: apps-dir
+      hostPath:
+        path: ./src
+        type: DirectoryOrCreate
   containers:
     - name: database
       image: mariadb:10.6.22-jammy
@@ -87,6 +91,31 @@ spec:
         initialDelaySeconds: 5
         periodSeconds: 10
         failureThreshold: 3
+    - name: apps
+      image: app-lara:latest
+      ports:
+        - containerPort: 5173
+        - hostPort: 5173
+      volumeMounts:
+        - name: apps-dir
+          mountPath: /var/www
+      env:
+        - name: DB_CONNECTION
+          value: '${DB_CONNECTION}'
+        - name: DB_HOST
+          value: '${DB_HOST}'
+        - name: DB_PORT
+          value: '${DB_PORT}'
+        - name: DB_DATABASE
+          value: '${DB_DATABASE}'
+        - name: DB_USERNAME
+          value: '${DB_USERNAME}'
+        - name: DB_PASSWORD
+          value: '${DB_PASSWORD}'
+        - name: REDIS_HOST
+          value: '${REDIS_HOST}'
+        - name: REDIS_PORT
+          value: '${REDIS_PORT}'
     - name: phpmyadmin
       image: phpmyadmin:fpm-alpine
       ports:
@@ -99,8 +128,8 @@ spec:
         - name: MYSQL_ROOT_PASSWORD
           value: '${DB_ROOT_PASSWORD}'
         - name: PMA_HOST
-          value: database
+          value: '${DB_HOST}'
         - name: PMA_PORT
-          value: '3306'
+          value: '${DB_PORT}'
         - name: UPLOAD_LIMIT
           value: '5G'
