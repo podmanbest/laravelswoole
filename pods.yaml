@@ -14,6 +14,14 @@ metadata:
       hostPort: 8080
 spec:
   volumes:
+    - name: mysql-config
+      hostPath:
+        path: ./containers/mysql/my.cnf
+        type: File
+    - name: mysql-init
+      hostPath:
+        path: ./containers/mysql/sql
+        type: DirectoryOrCreate
     - name: mysql-data
       hostPath:
         path: ./volumes/mysql/data
@@ -22,17 +30,9 @@ spec:
       hostPath:
         path: ./volumes/logs/mysql
         type: DirectoryOrCreate
-    - name: mysql-config
-      hostPath:
-        path: ./docker/mysql/my.cnf
-        type: File
-    - name: mysql-init
-      hostPath:
-        path: ./docker/mysql/sql
-        type: DirectoryOrCreate
     - name: redis-data
       hostPath:
-        path: ./docker/redis/data
+        path: ./volumes/redis/data
         type: DirectoryOrCreate
     - name: pma-sessions
       hostPath:
