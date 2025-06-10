@@ -8,4 +8,4 @@ if podman pod exists laravel; then
 fi
 
 # create from kube yaml
-podman play kube ./pods.yaml
+podman play kube ./laravel.yaml
