@@ -2,16 +2,8 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: laravel
-  namespace: laravel
-  labels:
-    app: laravel
-  ports:
-    - containerPort: 3306
-      hostPort: 3306
-    - containerPort: 6379
-      hostPort: 6379
-    - containerPort: 8080
-      hostPort: 8080
+  annotations:
+    bind-mount-options: ./src:Z
 spec:
   volumes:
     - name: mysql-config
@@ -44,14 +36,13 @@ spec:
         type: DirectoryOrCreate
   containers:
     - name: database
-      image: mariadb:10.6.22-jammy
+      image: docker.io/library/mysql:8.0
       ports:
         - containerPort: 3306
-        - hostPort: 3306
       volumeMounts:
-        - mountPath: /var/lib/mysql
+        - mountPath: /var/lib/mysql:Z
           name: mysql-data
-        - mountPath: /var/log/mysql
+        - mountPath: /var/log/mysql:Z
           name: mysql-logs
         - mountPath: /etc/mysql/conf.d/my.cnf
           name: mysql-config
@@ -59,27 +50,26 @@ spec:
           name: mysql-init
       env:
         - name: MYSQL_DATABASE
-          value: '${DB_DATABASE}'
+          value: laraveldb
         - name: MYSQL_USER
-          value: '${DB_USERNAME}'
+          value: larapuser
         - name: MYSQL_PASSWORD
-          value: '${DB_PASSWORD}'
+          value: larapass
         - name: MYSQL_ROOT_PASSWORD
-          value: '${DB_ROOT_PASSWORD}'
+          value: lararoot
       readinessProbe:
         exec:
           command:
             - sh
             - -c
-            - 'mysqladmin ping -u${DB_USERNAME} -p${DB_PASSWORD}'
+            - 'mysqladmin ping -u larapuser -p larapass'
         initialDelaySeconds: 5
         periodSeconds: 10
         failureThreshold: 3
     - name: redis
-      image: redis:alpine3.16
+      image: docker.io/library/redis:alpine3.16
       ports:
         - containerPort: 6379
-        - hostPort: 6379
       volumeMounts:
         - name: redis-data
           mountPath: /data
@@ -95,7 +85,6 @@ spec:
       image: app-lara:latest
       ports:
         - containerPort: 5173
-        - hostPort: 5173
       volumeMounts:
         - name: apps-dir
           mountPath: /var/www
@@ -117,19 +106,19 @@ spec:
         - name: REDIS_PORT
           value: '${REDIS_PORT}'
     - name: phpmyadmin
-      image: phpmyadmin:fpm-alpine
+      image: docker.io/phpmyadmin/phpmyadmin:latest
       ports:
         - containerPort: 80
-        - hostPort: 8080
+          hostPort: 8080
       volumeMounts:
         - name: pma-sessions
-          mountPath: /sessions
+          mountPath: /sessions:Z
       env:
         - name: MYSQL_ROOT_PASSWORD
-          value: '${DB_ROOT_PASSWORD}'
+          value: lararoot
         - name: PMA_HOST
-          value: '${DB_HOST}'
+          value: database
         - name: PMA_PORT
-          value: '${DB_PORT}'
+          value: 3306
         - name: UPLOAD_LIMIT
           value: '5G'
